@@ -1,0 +1,43 @@
+{
+  "name": "glm-mcp-copilot",
+  "version": "1.0.0",
+  "description": "GLM (Zhipu/Z.ai) as a cheap delegate for GitHub Copilot / Copilot Chat in VS Code — the same GLM MCP tools (glm_agent/glm_delegate/glm_recommend/glm_status) wired into VS Code agent mode.",
+  "type": "module",
+  "bin": {
+    "glm-mcp-copilot": "install-copilot.mjs"
+  },
+  "files": [
+    "glm-mcp/",
+    "install-copilot.mjs",
+    "copilot-instructions.md",
+    "mcp.json.example",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "github-copilot",
+    "copilot",
+    "copilot-chat",
+    "vscode",
+    "mcp",
+    "model-context-protocol",
+    "glm",
+    "zhipu",
+    "z.ai",
+    "cost-optimization"
+  ],
+  "author": "djerok",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/djerok/glm-mcp.git",
+    "directory": "copilot"
+  },
+  "bugs": {
+    "url": "https://github.com/djerok/glm-mcp/issues"
+  },
+  "homepage": "https://github.com/djerok/glm-mcp/tree/main/copilot#readme"
+}

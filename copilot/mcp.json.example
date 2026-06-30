@@ -1,0 +1,9 @@
+{
+  "servers": {
+    "glm": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["${userHome}/.glm-mcp/glm-mcp/src/index.js"]
+    }
+  }
+}

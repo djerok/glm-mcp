@@ -1,0 +1,5 @@
+glm-mcp/node_modules/
+glm-mcp/.env
+glm-mcp/usage.jsonl
+*.bak
+*.bak-*
