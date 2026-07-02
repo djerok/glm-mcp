@@ -21,14 +21,15 @@ Two editions, the **same GLM MCP server** underneath — pick your editor:
 |---|---|---|
 | npm package | `glm-mcp-claude` | `glm-mcp-copilot` |
 | Install | `npx glm-mcp-claude --key YOUR_ZAI_KEY` | `npx glm-mcp-copilot --key YOUR_ZAI_KEY` |
-| Integration | MCP server + full-tool `glm` subagent + auto-delegation hook + `glm-code` full-GLM launcher | MCP server in **agent mode** + `GLM` custom agent (subagent) + `.instructions.md` delegation policy |
+| Integration | MCP server + full-tool `glm` subagent + auto-delegation hook + `glm-code` full-GLM launcher | MCP server in **agent mode** + `GLM` custom agent (subagent) + PreToolUse auto-routing hook + `.instructions.md` delegation policy |
 | Tools | `glm_agent` · `glm_delegate` · `glm_recommend` · `glm_status` | *same* |
 | Docs | **[claude/README.md](claude/README.md)** | **[copilot/README.md](copilot/README.md)** |
 
-> Copilot **does** have subagents (custom agents), so that edition ships a `GLM` subagent too — it just
-> lacks Claude Code's PreToolUse *hook*, so delegation is driven by the subagent + instructions instead of
-> auto-routing. Everything downstream (GLM agent loop, peak-aware routing, cost bias, token cap, usage
-> ledger, dry-run oversight) is the **same server**, so behavior is identical once a tool runs.
+> Both editions now share the same primitives — **MCP tools + a `GLM` subagent + a PreToolUse auto-routing
+> hook**. (Copilot's hook fires on all tool calls and filters internally, since VS Code ignores hook
+> matchers; only Claude's standalone `glm-code` full-GLM launcher has no Copilot analog.) Everything
+> downstream (GLM agent loop, peak-aware routing, cost bias, token cap, usage ledger, dry-run oversight)
+> is the **same server**, so behavior is identical once a tool runs.
 
 ### Global vs per-project
 - **Claude Code** installs **globally by default** (user-scoped MCP server + `~/.claude` agent/hook) — works in every project.

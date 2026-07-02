@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 // install-copilot.mjs — set up GLM as a delegate for GitHub Copilot / Copilot Chat (VS Code agent mode).
 // Installs the shared GLM MCP server, registers it in the workspace .vscode/mcp.json (VS Code's
-// "servers" format), and writes .github/copilot-instructions.md so Copilot delegates to GLM.
-// It does NOT touch any Claude Code setup.
+// "servers" format), writes .github/copilot-instructions.md so Copilot delegates to GLM, and installs a
+// PreToolUse agent hook (.github/hooks/glm.hooks.json or ~/.copilot/hooks/glm.hooks.json) that nudges
+// delegation to GLM. It does NOT touch any Claude Code setup.
 //
 // Usage:
 //   node install-copilot.mjs --key YOUR_ZAI_KEY          # set up in the current workspace
@@ -63,6 +64,13 @@ cpSync(join(SELF, "glm-mcp"), join(SERVER_HOME, "glm-mcp"), {
   },
 });
 
+// Also stage the PreToolUse hook script inside the server home so the hook has a stable absolute path.
+step("Staging the GLM PreToolUse hook script");
+copyFileSync(join(SELF, "glm_router_hook.mjs"), join(SERVER_HOME, "glm_router_hook.mjs"));
+const hookScript = join(SERVER_HOME, "glm_router_hook.mjs").replace(/\\/g, "/");
+const hookCmd = 'node "' + hookScript + '"';
+log("  " + join(SERVER_HOME, "glm_router_hook.mjs"));
+
 // 2. .env (API key)
 step("Setting up .env");
 const envPath = join(SERVER_HOME, "glm-mcp", ".env");
@@ -87,6 +95,7 @@ if (!SKIP_NPM) {
 const idx = join(SERVER_HOME, "glm-mcp", "src", "index.js").replace(/\\/g, "/");
 const AGENTS_HOME = join(homedir(), ".copilot", "agents"); // global custom-agent location
 const INSTR_HOME = join(homedir(), ".copilot", "instructions"); // global instructions location
+const HOOKS_HOME = join(homedir(), ".copilot", "hooks"); // global hooks location
 
 function mergeMcp(mcpPath) {
   mkdirSync(dirname(mcpPath), { recursive: true });
@@ -106,6 +115,12 @@ function copyInto(dir, srcFile) {
   copyFileSync(join(SELF, srcFile), dest);
   return dest;
 }
+function writeHookFile(dir) {
+  mkdirSync(dir, { recursive: true });
+  const p = join(dir, "glm.hooks.json");
+  writeFileSync(p, JSON.stringify({ hooks: { PreToolUse: [ { type: "command", command: hookCmd, timeout: 10 } ] } }, null, 2) + "\n");
+  return p;
+}
 
 if (GLOBAL) {
   const userDir = vscodeUserDir();
@@ -117,6 +132,9 @@ if (GLOBAL) {
 
   step("Installing GLOBAL Copilot instructions -> " + INSTR_HOME);
   log("  " + copyInto(INSTR_HOME, "glm.instructions.md"));
+
+  step("Installing the GLM PreToolUse hook (auto-routing) -> " + HOOKS_HOME);
+  log("  " + writeHookFile(HOOKS_HOME));
 
   step("Updating VS Code user settings.json (locations + toggles)");
   const setPath = join(userDir, "settings.json");
@@ -157,6 +175,9 @@ if (GLOBAL) {
   } else {
     log("  copilot-instructions.md already has the policy");
   }
+
+  step("Installing the GLM PreToolUse hook (auto-routing) -> .github/hooks/");
+  log("  " + writeHookFile(join(WORKSPACE, ".github", "hooks")));
 }
 
 log("\n✅ Done. Next steps:");
@@ -167,6 +188,6 @@ log("  4. Use it: pick the 'GLM' agent in the chat mode dropdown, or ask the mai
 log("     'use glm_agent to …'. Run glm_status for the GLM usage ledger.");
 log(
   GLOBAL
-    ? "\nGLOBAL mode: the glm server, GLM subagent, and delegation policy now apply to ALL your VS Code workspaces."
+    ? "\nGLOBAL mode: the glm server, GLM subagent, delegation policy, and PreToolUse auto-routing hook now apply to ALL your VS Code workspaces."
     : "\nWorkspace mode: current project only. Re-run with --global to apply to every project."
 );

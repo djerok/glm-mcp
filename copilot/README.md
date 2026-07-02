@@ -15,6 +15,10 @@ calls `glm_agent` / `glm_delegate` / `glm_recommend` / `glm_status` to offload w
 - A **`GLM` custom agent (subagent)** — restricted to the `glm` tools, so it *must* delegate to GLM
   (the Copilot analog of the Claude `glm` subagent). Pick it from the chat mode dropdown or hand off to it.
 - A **delegation-policy instructions file** so Copilot offloads to GLM automatically.
+- A **PreToolUse auto-routing hook** (`glm_router_hook.mjs`) — fires before the default model does work
+  itself and nudges delegating to GLM (the Copilot analog of the Claude `glm_subagent_router` hook).
+  Installed to `.github/hooks/glm.hooks.json` per-project, or `~/.copilot/hooks/glm.hooks.json` globally.
+  Non-blocking (always allows the tool call). VS Code **preview feature**.
 
 ## Prerequisites
 - **VS Code** with **GitHub Copilot + Copilot Chat**, and **Agent mode** available (MCP support).
@@ -35,7 +39,8 @@ Run it **from your project folder** (it sets up that workspace). It:
 2. writes your key to that server's `.env`,
 3. registers the server in `.vscode/mcp.json` (VS Code's `servers` format),
 4. installs the **`GLM` custom agent** → `.github/agents/glm.agent.md`,
-5. writes `.github/copilot-instructions.md` (the delegation policy).
+5. writes `.github/copilot-instructions.md` (the delegation policy),
+6. installs the **PreToolUse auto-routing hook** → `.github/hooks/glm.hooks.json`.
 
 ### Global (all projects)
 Set it up once for **every** workspace with `--global`:
@@ -46,6 +51,7 @@ Global mode writes to VS Code's **user config** instead of one workspace:
 - the `glm` server → the **user `mcp.json`** (all workspaces),
 - the **`GLM` custom agent** → `~/.copilot/agents/glm.agent.md`,
 - the delegation policy → `~/.copilot/instructions/glm.instructions.md` (with `applyTo: '**'`),
+- the **PreToolUse auto-routing hook** → `~/.copilot/hooks/glm.hooks.json`,
 - and it registers those locations + enables agent mode in **user `settings.json`**
   (`chat.agentFilesLocations`, `chat.instructionsFilesLocations`, `chat.agent.enabled`).
 
@@ -57,14 +63,20 @@ Then in VS Code: **Reload Window → open Copilot Chat → Agent mode → start 
 Servers`). Ask Copilot to do a coding task; it will call `glm_agent`.
 
 ## How it differs from the Claude Code version
-Near-parity — Copilot **does** have subagents (custom agents):
+**Essentially full parity** — Copilot now has all three primitives:
 - **`glm_*` MCP tools** in **agent mode** (same server as the Claude edition).
 - A **`GLM` custom agent (subagent)** restricted to the `glm` tools — the analog of the Claude `glm`
   subagent (forced to delegate to GLM). Invoke it from the mode dropdown or via an agent handoff.
+- A **PreToolUse agent hook** (`glm_router_hook.mjs`) that auto-nudges delegation — the analog of the
+  Claude `glm_subagent_router` hook: before the default model does work itself, it suggests delegating
+  to `glm_agent` (non-blocking; it only injects advisory context, never denies a tool call).
 - **Instructions files** steer delegation (the CLAUDE.md equivalent).
 
-The only thing Copilot lacks is Claude Code's **PreToolUse hook** (auto-routing on every subagent
-spawn) — so in Copilot, delegation is driven by the subagent + instructions rather than a hook.
+Small differences that remain:
+- VS Code hooks **ignore the matcher**, so the hook fires on *every* tool call and filters by
+  `tool_name` internally (and advises at most once per session to stay quiet).
+- VS Code **hooks are a preview feature**; flip them on in Copilot settings if your build hides them.
+- There is **no separate `glm-code` full-GLM launcher** (Claude's standalone all-GLM entry point).
 
 Everything else — the GLM agent loop, peak-aware model pick, cost bias, token cap, usage ledger,
 `dry_run` oversight — is the **same server**, so it behaves identically once a tool is called.
