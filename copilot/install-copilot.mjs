@@ -82,8 +82,11 @@ if (!SKIP_NPM) {
   execSync("npm install --no-audit --no-fund", { cwd: join(SERVER_HOME, "glm-mcp"), stdio: "inherit" });
 }
 
-// 4 & 5. Register the server + delegation policy — globally (all workspaces) or in this workspace.
+// 4-6. Register the server, the `glm` custom agent (subagent), and the delegation policy —
+// globally (all workspaces) or in this workspace.
 const idx = join(SERVER_HOME, "glm-mcp", "src", "index.js").replace(/\\/g, "/");
+const AGENTS_HOME = join(homedir(), ".copilot", "agents"); // global custom-agent location
+const INSTR_HOME = join(homedir(), ".copilot", "instructions"); // global instructions location
 
 function mergeMcp(mcpPath) {
   mkdirSync(dirname(mcpPath), { recursive: true });
@@ -97,51 +100,62 @@ function mergeMcp(mcpPath) {
   writeFileSync(mcpPath, JSON.stringify(mcp, null, 2) + "\n");
   return mcpPath;
 }
-
-const CONCISE_POLICY =
-  "GLM delegation: prefer the glm MCP tools. For any coding / edit / refactor / test / docs task, call " +
-  "glm_agent with the goal + the absolute repo path (workdir) so GLM does it end-to-end on GLM tokens " +
-  "(~10x cheaper) — don't do the file work yourself when GLM can. Use glm_delegate for pure text. Keep " +
-  "sensitive/secret code, vision, parallel work, >128K context, and heavy dependent tool-loops on the " +
-  "default model. Run glm_status for the GLM usage ledger.";
+function copyInto(dir, srcFile) {
+  mkdirSync(dir, { recursive: true });
+  const dest = join(dir, srcFile);
+  copyFileSync(join(SELF, srcFile), dest);
+  return dest;
+}
 
 if (GLOBAL) {
   const userDir = vscodeUserDir();
   step("Registering glm GLOBALLY (VS Code user mcp.json) -> " + userDir);
   log("  " + mergeMcp(join(userDir, "mcp.json")));
 
-  step("Adding GLOBAL Copilot instructions (VS Code user settings.json)");
+  step("Installing the GLM custom agent (subagent) -> " + AGENTS_HOME);
+  log("  " + copyInto(AGENTS_HOME, "glm.agent.md"));
+
+  step("Installing GLOBAL Copilot instructions -> " + INSTR_HOME);
+  log("  " + copyInto(INSTR_HOME, "glm.instructions.md"));
+
+  step("Updating VS Code user settings.json (locations + toggles)");
   const setPath = join(userDir, "settings.json");
   let settings = {};
   if (existsSync(setPath)) {
     try { settings = JSON.parse(readFileSync(setPath, "utf8")); } catch { settings = {}; }
     writeFileSync(setPath + ".bak-" + Date.now(), readFileSync(setPath));
   }
-  const K = "github.copilot.chat.codeGeneration.instructions";
-  const arr = Array.isArray(settings[K]) ? settings[K] : [];
-  if (!arr.some((e) => e && typeof e.text === "string" && e.text.includes("glm_agent"))) {
-    arr.push({ text: CONCISE_POLICY });
-    settings[K] = arr;
-    writeFileSync(setPath, JSON.stringify(settings, null, 2) + "\n");
-    log("  added to " + setPath);
-  } else {
-    log("  policy already present");
+  const agentsGlob = AGENTS_HOME.replace(/\\/g, "/");
+  const instrGlob = INSTR_HOME.replace(/\\/g, "/");
+  settings["chat.agentFilesLocations"] = { ...(settings["chat.agentFilesLocations"] || {}), [agentsGlob]: true };
+  settings["chat.instructionsFilesLocations"] = { ...(settings["chat.instructionsFilesLocations"] || {}), [instrGlob]: true };
+  settings["github.copilot.chat.codeGeneration.useInstructionFiles"] = true;
+  settings["chat.agent.enabled"] = true;
+  // Migrate off the deprecated inline-instructions setting (remove our old entry if present).
+  const DEP = "github.copilot.chat.codeGeneration.instructions";
+  if (Array.isArray(settings[DEP])) {
+    settings[DEP] = settings[DEP].filter((e) => !(e && typeof e.text === "string" && e.text.includes("glm_agent")));
+    if (settings[DEP].length === 0) delete settings[DEP];
   }
+  writeFileSync(setPath, JSON.stringify(settings, null, 2) + "\n");
+  log("  " + setPath);
 } else {
   step("Registering the glm server in VS Code (workspace .vscode/mcp.json)");
   log("  " + mergeMcp(join(WORKSPACE, ".vscode", "mcp.json")));
 
+  step("Installing the GLM custom agent (subagent) -> .github/agents/");
+  log("  " + copyInto(join(WORKSPACE, ".github", "agents"), "glm.agent.md"));
+
   step("Adding delegation policy (workspace .github/copilot-instructions.md)");
-  const ghDir = join(WORKSPACE, ".github");
-  mkdirSync(ghDir, { recursive: true });
-  const ciPath = join(ghDir, "copilot-instructions.md");
+  const ciPath = join(WORKSPACE, ".github", "copilot-instructions.md");
+  mkdirSync(dirname(ciPath), { recursive: true });
   const policy = readFileSync(join(SELF, "copilot-instructions.md"), "utf8");
   const existing = existsSync(ciPath) ? readFileSync(ciPath, "utf8") : "";
   if (!existing.includes("glm_agent")) {
     writeFileSync(ciPath, existing + (existing ? "\n\n" : "") + policy);
     log("  " + ciPath);
   } else {
-    log("  policy already present (left as-is)");
+    log("  copilot-instructions.md already has the policy");
   }
 }
 
@@ -149,9 +163,10 @@ log("\n✅ Done. Next steps:");
 log("  1. Ensure GLM_API_KEY is set in " + envPath);
 log("  2. In VS Code: Reload Window, open Copilot Chat, switch to Agent mode.");
 log("  3. Start the 'glm' server: run 'MCP: List Servers' (or VS Code will offer to start it).");
-log("  4. Ask Copilot to do a coding task — it will call glm_agent. Run glm_status for the GLM usage ledger.");
+log("  4. Use it: pick the 'GLM' agent in the chat mode dropdown, or ask the main agent to");
+log("     'use glm_agent to …'. Run glm_status for the GLM usage ledger.");
 log(
   GLOBAL
-    ? "\nGLOBAL mode: the glm server + delegation policy now apply to ALL your VS Code workspaces."
+    ? "\nGLOBAL mode: the glm server, GLM subagent, and delegation policy now apply to ALL your VS Code workspaces."
     : "\nWorkspace mode: current project only. Re-run with --global to apply to every project."
 );

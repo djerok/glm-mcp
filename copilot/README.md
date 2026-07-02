@@ -12,7 +12,9 @@ calls `glm_agent` / `glm_delegate` / `glm_recommend` / `glm_status` to offload w
   - **`glm_delegate`** — GLM drafts text you place.
   - **`glm_recommend`** — free advisory: GLM vs the default model.
   - **`glm_status`** — usage ledger (proof of GLM tokens spent) + config.
-- A **`.github/copilot-instructions.md`** delegation policy so Copilot offloads to GLM automatically.
+- A **`GLM` custom agent (subagent)** — restricted to the `glm` tools, so it *must* delegate to GLM
+  (the Copilot analog of the Claude `glm` subagent). Pick it from the chat mode dropdown or hand off to it.
+- A **delegation-policy instructions file** so Copilot offloads to GLM automatically.
 
 ## Prerequisites
 - **VS Code** with **GitHub Copilot + Copilot Chat**, and **Agent mode** available (MCP support).
@@ -32,7 +34,8 @@ Run it **from your project folder** (it sets up that workspace). It:
 1. installs the GLM MCP server to `~/.glm-mcp/glm-mcp/` and runs `npm install`,
 2. writes your key to that server's `.env`,
 3. registers the server in `.vscode/mcp.json` (VS Code's `servers` format),
-4. writes `.github/copilot-instructions.md` (the delegation policy).
+4. installs the **`GLM` custom agent** → `.github/agents/glm.agent.md`,
+5. writes `.github/copilot-instructions.md` (the delegation policy).
 
 ### Global (all projects)
 Set it up once for **every** workspace with `--global`:
@@ -40,22 +43,28 @@ Set it up once for **every** workspace with `--global`:
 npx glm-mcp-copilot --global --key YOUR_ZAI_API_KEY
 ```
 Global mode writes to VS Code's **user config** instead of one workspace:
-- the `glm` server → the **user `mcp.json`** (available in all workspaces), and
-- the delegation policy → **user `settings.json`** (`github.copilot.chat.codeGeneration.instructions`).
+- the `glm` server → the **user `mcp.json`** (all workspaces),
+- the **`GLM` custom agent** → `~/.copilot/agents/glm.agent.md`,
+- the delegation policy → `~/.copilot/instructions/glm.instructions.md` (with `applyTo: '**'`),
+- and it registers those locations + enables agent mode in **user `settings.json`**
+  (`chat.agentFilesLocations`, `chat.instructionsFilesLocations`, `chat.agent.enabled`).
 
-> The global **server** is reliable across VS Code versions. The global **instructions** setting is
-> VS-Code-version-dependent (its exact key is evolving) — if Copilot ignores it in your version, the
-> tools are still there; just nudge it ("use glm_agent to…"), or add a repo `.github/copilot-instructions.md`.
+> Uses the current (non-deprecated) instructions mechanism — `.instructions.md` files, **not** the old
+> `codeGeneration.instructions` settings array (deprecated in VS Code 1.102; the installer migrates off it).
 > Use `--vscode-user-dir PATH` if your VS Code User folder isn't auto-detected (Insiders/VSCodium/portable).
 
 Then in VS Code: **Reload Window → open Copilot Chat → Agent mode → start the `glm` server** (`MCP: List
 Servers`). Ask Copilot to do a coding task; it will call `glm_agent`.
 
 ## How it differs from the Claude Code version
-Copilot doesn't have Claude Code's *subagents* or *PreToolUse hooks*, so there's no auto-routing hook or
-`glm` subagent. Instead:
-- **MCP tools** (`glm_*`) are available in **agent mode** and Copilot calls them.
-- **`.github/copilot-instructions.md`** steers Copilot to delegate to GLM (the CLAUDE.md equivalent).
+Near-parity — Copilot **does** have subagents (custom agents):
+- **`glm_*` MCP tools** in **agent mode** (same server as the Claude edition).
+- A **`GLM` custom agent (subagent)** restricted to the `glm` tools — the analog of the Claude `glm`
+  subagent (forced to delegate to GLM). Invoke it from the mode dropdown or via an agent handoff.
+- **Instructions files** steer delegation (the CLAUDE.md equivalent).
+
+The only thing Copilot lacks is Claude Code's **PreToolUse hook** (auto-routing on every subagent
+spawn) — so in Copilot, delegation is driven by the subagent + instructions rather than a hook.
 
 Everything else — the GLM agent loop, peak-aware model pick, cost bias, token cap, usage ledger,
 `dry_run` oversight — is the **same server**, so it behaves identically once a tool is called.

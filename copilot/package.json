@@ -1,7 +1,7 @@
 {
   "name": "glm-mcp-copilot",
-  "version": "1.1.0",
-  "description": "GLM (Zhipu/Z.ai) as a cheap delegate for GitHub Copilot / Copilot Chat in VS Code — the same GLM MCP tools (glm_agent/glm_delegate/glm_recommend/glm_status) wired into VS Code agent mode.",
+  "version": "1.2.0",
+  "description": "GLM (Zhipu/Z.ai) as a cheap delegate for GitHub Copilot / Copilot Chat in VS Code — the same GLM MCP tools (glm_agent/glm_delegate/glm_recommend/glm_status) plus a GLM custom agent (subagent), wired into VS Code agent mode, installable globally.",
   "type": "module",
   "bin": {
     "glm-mcp-copilot": "install-copilot.mjs"
@@ -9,6 +9,8 @@
   "files": [
     "glm-mcp/",
     "install-copilot.mjs",
+    "glm.agent.md",
+    "glm.instructions.md",
     "copilot-instructions.md",
     "mcp.json.example",
     "README.md",
