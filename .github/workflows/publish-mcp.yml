@@ -12,7 +12,7 @@ jobs:
       id-token: write
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Sync server.json version from tag
         if: startsWith(github.ref, 'refs/tags/v')
@@ -27,5 +27,15 @@ jobs:
       - name: Authenticate to MCP Registry (GitHub OIDC)
         run: ./mcp-publisher login github-oidc
 
-      - name: Publish to MCP Registry
-        run: ./mcp-publisher publish
+      - name: Publish to MCP Registry (idempotent)
+        run: |
+          NAME=$(jq -r .name server.json)
+          VER=$(jq -r .version server.json)
+          PUB=$(curl -sL "https://registry.modelcontextprotocol.io/v0/servers?search=$NAME" \
+            | jq -r --arg n "$NAME" '.servers[]? | .server | select(.name==$n) | .version' | sort -V | tail -1)
+          echo "server.json: $NAME v$VER | registry latest: ${PUB:-none}"
+          if [ "$PUB" = "$VER" ]; then
+            echo "Version $VER already published — skipping (idempotent, no failure)."
+          else
+            ./mcp-publisher publish
+          fi
