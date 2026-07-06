@@ -1,0 +1,72 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  server:
+    name: Server syntax + keyless smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install server deps
+        working-directory: claude/glm-mcp
+        run: npm install --no-audit --no-fund
+
+      - name: Syntax-check server source
+        run: |
+          for f in claude/glm-mcp/src/*.js; do
+            echo "checking $f"
+            node --check "$f"
+          done
+
+      - name: Syntax-check installers, hooks, and scripts
+        run: |
+          node --check claude/install.mjs
+          node --check claude/uninstall.mjs
+          node --check claude/glm-code.mjs
+          node --check claude/hooks/glm_subagent_router.mjs
+          node --check copilot/install-copilot.mjs
+          node --check copilot/glm_router_hook.mjs
+          node --check scripts/publish-server.mjs
+          node --check scripts/smoke-stdio.mjs
+
+      - name: Keyless MCP introspection smoke
+        run: node scripts/smoke-stdio.mjs
+
+  docker:
+    name: Docker MCP introspection
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build image
+        run: docker build -t glm-mcp-ci .
+
+      - name: Container answers MCP initialize keyless
+        timeout-minutes: 2
+        run: |
+          printf '%s\n' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"ci","version":"1.0"}}}' \
+            | docker run --rm -i glm-mcp-ci \
+            | grep '"serverInfo"'
+
+  pack:
+    name: npm pack secret scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Stage + pack + scan
+        run: node scripts/publish-server.mjs

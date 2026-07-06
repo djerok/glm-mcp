@@ -19,6 +19,7 @@ import { spawnSync } from "node:child_process";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, "..");
 const SERVER_DIR = join(REPO_ROOT, "claude", "glm-mcp");
+const PUBLISH_VERSION = "1.1.8"; // standalone glm-mcp npm version (claude/ package.json stays untouched)
 
 // ---------------------------------------------------------------------------
 // Sanity: the source server must exist where we expect it.
@@ -63,7 +64,8 @@ const srcPkg = JSON.parse(readFileSync(join(STAGE, "package.json"), "utf8"));
 
 const stagedPkg = {
   name: srcPkg.name, // "glm-mcp"
-  version: srcPkg.version,
+  mcpName: "io.github.djerok/glm-mcp", // MCP Registry ownership proof (must match server.json name)
+  version: PUBLISH_VERSION,
   type: srcPkg.type, // "module"
   bin: srcPkg.bin, // { "glm-mcp": "src/index.js" }
   main: srcPkg.main, // "src/index.js"
