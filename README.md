@@ -38,6 +38,33 @@ Two editions, the **same GLM MCP server** underneath — pick your editor:
   npx glm-mcp-copilot --global --key YOUR_ZAI_KEY
   ```
 
+### Direct install (any MCP client / Glama)
+
+The GLM MCP server itself is also published as the standalone [`glm-mcp`](https://www.npmjs.com/package/glm-mcp)
+package — **no installer needed** for generic MCP clients (Cursor, Windsurf, Claude Desktop, Glama, …).
+Add it with the same four tools (`glm_agent`, `glm_delegate`, `glm_recommend`, `glm_status`):
+
+```json
+{
+  "mcpServers": {
+    "glm": {
+      "command": "npx",
+      "args": ["-y", "glm-mcp"],
+      "env": { "GLM_API_KEY": "YOUR_ZAI_KEY" }
+    }
+  }
+}
+```
+
+For container / registry use, the repo-root [`Dockerfile`](Dockerfile) runs the **same** server:
+
+```bash
+docker build -t glm-mcp .
+docker run --rm -i -e GLM_API_KEY=YOUR_ZAI_KEY glm-mcp
+```
+
+The server boots and answers MCP introspection **without** a key (set `GLM_API_KEY` to make actual GLM calls).
+
 ## What it does (both editions)
 - Offloads well-specified coding work to GLM — **`glm_agent`** lets GLM read/write/edit/run your repo
   directly, on GLM tokens (~10× cheaper). Your main model orchestrates + verifies.
