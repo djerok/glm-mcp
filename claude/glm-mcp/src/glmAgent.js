@@ -94,7 +94,7 @@ function gitCheckpoint(root) {
   };
 }
 
-export async function runGlmAgent({ model, task, context, workdir, maxTokens = 32768, thinking = false, dryRun = false }) {
+export async function runGlmAgent({ model, task, context, workdir, maxTokens = 131072, thinking = false, dryRun = false, onProgress, signal }) {
   const root = workdir && workdir.trim() ? resolve(workdir) : process.cwd();
   const log = [];
   const originals = new Map(); // abs -> pre-run disk content (string|null if didn't exist)
@@ -184,9 +184,23 @@ export async function runGlmAgent({ model, task, context, workdir, maxTokens = 3
   let lastText = "";
   const totalUsage = { input_tokens: 0, output_tokens: 0 };
   let iters = 0;
+  let cancelled = false;
+  const emit = (msg) => { if (onProgress) { try { onProgress(msg, iters, MAX_ITERS); } catch {} } };
 
   for (; iters < MAX_ITERS; iters++) {
-    const { raw, usage } = await glmMessage({ model, system, messages, maxTokens, thinking, tools: TOOLS });
+    if (signal?.aborted) { cancelled = true; break; }
+    const baseOut = totalUsage.output_tokens;
+    emit(`iter ${iters + 1}/${MAX_ITERS} — GLM generating…`);
+    let raw, usage;
+    try {
+      ({ raw, usage } = await glmMessage({
+        model, system, messages, maxTokens, thinking, tools: TOOLS, signal,
+        onToken: (outTok, tps) => emit(`iter ${iters + 1}/${MAX_ITERS} · ${baseOut + outTok} tok · ${tps} tok/s`),
+      }));
+    } catch (e) {
+      if (e && e.cancelled) { cancelled = true; break; }
+      throw e;
+    }
     totalUsage.input_tokens += usage.input_tokens || 0;
     totalUsage.output_tokens += usage.output_tokens || 0;
     const content = raw.content || [];
@@ -199,6 +213,7 @@ export async function runGlmAgent({ model, task, context, workdir, maxTokens = 3
       role: "user",
       content: toolUses.map((tu) => ({ type: "tool_result", tool_use_id: tu.id, content: String(runTool(tu.name, tu.input || {})) })),
     });
+    emit(`iter ${iters + 1}/${MAX_ITERS} · ${log.slice(-toolUses.length).join(", ") || toolUses.map((t) => t.name).join(", ")}`);
   }
 
   // Build the diff from captured originals.
@@ -213,10 +228,13 @@ export async function runGlmAgent({ model, task, context, workdir, maxTokens = 3
   if (diff.length > DIFF_CAP) diff = diff.slice(0, DIFF_CAP) + "\n…[diff truncated]";
 
   return {
-    text: lastText || "(GLM finished without a summary)",
+    text: cancelled
+      ? (lastText ? lastText + "\n\n(cancelled mid-run — partial work above; changes so far are shown in the diff and can be reverted.)" : "(cancelled before GLM produced output — no changes.)")
+      : lastText || "(GLM finished without a summary)",
     actions: log,
     iters,
     hitCap: iters >= MAX_ITERS,
+    cancelled,
     usage: totalUsage,
     root,
     dryRun,

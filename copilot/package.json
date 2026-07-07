@@ -1,6 +1,6 @@
 {
   "name": "glm-mcp-copilot",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "GLM (Zhipu/Z.ai) as a cheap delegate for GitHub Copilot / Copilot Chat in VS Code — the same GLM MCP tools (glm_agent/glm_delegate/glm_recommend/glm_status), a GLM custom agent (subagent), and a PreToolUse auto-routing hook, wired into VS Code agent mode, installable globally.",
   "type": "module",
   "bin": {

@@ -49,6 +49,19 @@ const TASK_TYPES = [
   "agentic_loop", "toolcall_heavy",
 ];
 
+// Build a progress emitter bound to this tool call. If the MCP client supplied a
+// progressToken, stream live status (iteration, token count, tok/s) via
+// notifications/progress -- rendered by Claude Code and VS Code Copilot, and it also
+// keeps the call alive on clients that reset their timeout on progress.
+function makeProgress(extra) {
+  const token = extra?._meta?.progressToken;
+  let seq = 0;
+  return (message) => {
+    if (token == null || !extra?.sendNotification) return;
+    extra.sendNotification({ method: "notifications/progress", params: { progressToken: token, progress: ++seq, message } }).catch(() => {});
+  };
+}
+
 // ----------------------------- glm_delegate -----------------------------
 server.registerTool(
   "glm_delegate",
@@ -73,7 +86,7 @@ server.registerTool(
         .describe("Model id or 'auto' (default). e.g. glm-5.2, glm-4.7, glm-4.5-air. 'auto' picks peak-aware."),
       system: z.string().optional().describe("Optional system prompt to steer GLM's role/format."),
       thinking: z.boolean().optional().describe("Enable GLM reasoning mode for harder tasks (slower). Default false."),
-      max_tokens: z.number().int().min(256).max(131072).optional().describe("Max output tokens (ceiling; billed for actual). Default generous."),
+      max_tokens: z.union([z.literal("auto"), z.number().int().min(256).max(131072)]).optional().describe("'auto' (default): uncapped/generous — you (the orchestrating agent) decide. Pass a number (256–131072) to cap this call. (GLM_CAP=on enforces a hard limit regardless.)"),
       format: z.enum(["concise", "detailed"]).optional().describe("concise (default) or detailed metadata."),
     },
     annotations: {
@@ -83,10 +96,10 @@ server.registerTool(
       openWorldHint: true,
     },
   },
-  async ({ task, context, model = "auto", system, thinking = false, max_tokens, format = "concise" }) => {
+  async ({ task, context, model = "auto", system, thinking = false, max_tokens = "auto", format = "concise" }, extra) => {
     const now = new Date();
     const chosen = resolveModel(model, now);
-
+    const onProgress = makeProgress(extra);
     const userContent = context ? `${task}\n\n--- CONTEXT ---\n${context}` : task;
     try {
       const { text, usage } = await glmMessage({
@@ -95,6 +108,8 @@ server.registerTool(
         messages: [{ role: "user", content: userContent }],
         maxTokens: resolveMaxTokens(max_tokens),
         thinking,
+        signal: extra?.signal,
+        onToken: (outTok, tps) => onProgress(`GLM ${chosen} · ${outTok} tok · ${tps} tok/s`),
       });
 
       const inTok = usage.input_tokens ?? 0;
@@ -116,6 +131,7 @@ server.registerTool(
       }
       return { content: [{ type: "text", text: clip(out) }] };
     } catch (e) {
+      if (e && e.cancelled) return { content: [{ type: "text", text: "GLM call cancelled." }] };
       return {
         isError: true,
         content: [
@@ -153,17 +169,18 @@ server.registerTool(
       context: z.string().optional().describe("Optional extra context/constraints (GLM can also read files itself)."),
       model: z.string().optional().describe("Model id or 'auto' (default, peak-aware)."),
       thinking: z.boolean().optional().describe("Enable GLM reasoning mode for harder tasks. Default false."),
-      max_tokens: z.number().int().min(256).max(131072).optional().describe("Max output tokens per turn (ceiling; billed for actual). Default generous."),
+      max_tokens: z.union([z.literal("auto"), z.number().int().min(256).max(131072)]).optional().describe("'auto' (default): uncapped/generous per turn — you (the orchestrating agent) decide. Pass a number (256–131072) to cap each turn. (GLM_CAP=on enforces a hard limit regardless.)"),
       dry_run: z.boolean().optional().describe("If true, GLM proposes a diff and writes nothing (preview before applying). Default false."),
       format: z.enum(["concise", "detailed"]).optional().describe("concise (default: summary+stats+changed files) or detailed (adds full diff). dry_run always shows the diff."),
     },
     annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: true },
   },
-  async ({ task, workdir, context, model = "auto", thinking = false, max_tokens, dry_run = false, format = "concise" }) => {
+  async ({ task, workdir, context, model = "auto", thinking = false, max_tokens = "auto", dry_run = false, format = "concise" }, extra) => {
     const now = new Date();
     const chosen = resolveModel(model, now);
+    const onProgress = makeProgress(extra);
     try {
-      const r = await runGlmAgent({ model: chosen, task, context, workdir, maxTokens: resolveMaxTokens(max_tokens), thinking, dryRun: dry_run });
+      const r = await runGlmAgent({ model: chosen, task, context, workdir, maxTokens: resolveMaxTokens(max_tokens), thinking, dryRun: dry_run, onProgress, signal: extra?.signal });
       const inTok = r.usage.input_tokens || 0;
       const outTok = r.usage.output_tokens || 0;
       const totalTok = inTok + outTok;
@@ -172,7 +189,7 @@ server.registerTool(
       const xCheaper = cost > 0 ? Math.round(opusCost / cost) : "?";
       const banner = r.dryRun ? "*** DRY RUN — nothing was written; this is GLM's PROPOSED change for you to approve ***\n" : "";
       const header =
-        `[GLM agent] ${chosen} | dir=${r.root} | ${r.iters} iterations${r.hitCap ? " (HIT CAP -- may be incomplete)" : ""} | ${r.actions.length} actions | ${r.changedFiles.length} files`;
+        `[GLM agent] ${chosen} | dir=${r.root} | ${r.iters} iterations${r.hitCap ? " (HIT CAP -- may be incomplete)" : ""}${r.cancelled ? " (CANCELLED -- partial)" : ""} | ${r.actions.length} actions | ${r.changedFiles.length} files`;
       // Concise by default: keep what the caller (Claude) must read minimal -> more burden stays on
       // GLM. The full diff + per-action list appear only for dry_run or format:"detailed".
       const showDiff = r.dryRun || format === "detailed";
@@ -192,6 +209,7 @@ server.registerTool(
         `est. cost:  $${cost}  (~${xCheaper}x cheaper than Opus)`;
       return { content: [{ type: "text", text: clip(`${banner}${header}${actions}${diff}${revert}\n\n=== GLM SUMMARY ===\n${r.text}${stats}`) }] };
     } catch (e) {
+      if (e && e.cancelled) return { content: [{ type: "text", text: "GLM agent cancelled." }] };
       return {
         isError: true,
         content: [
@@ -291,6 +309,7 @@ server.registerTool(
         ? "Haiku `glm` subagent allowed (spends some Claude tokens to orchestrate)."
         : "Direct GLM only (GLM_USE_HAIKU=off) -> call glm_agent directly; keeps all tokens on GLM.",
       max_tokens: {
+        default_mode: "auto (uncapped/generous unless GLM_CAP=on)",
         cap_enabled: MAXTOK.capEnabled,
         default_per_call: resolveMaxTokens(undefined),
         cap_value_when_on: MAXTOK.capValue,

@@ -1,6 +1,6 @@
 {
   "name": "glm-mcp-claude",
-  "version": "1.1.7",
+  "version": "1.2.0",
   "description": "GLM (Zhipu/Z.ai) as a cheap, full-capability subagent for Claude Code — auto-routing between Opus and GLM, a file-editing agent with diff/dry-run/git-revert oversight, and a one-command installer.",
   "type": "module",
   "bin": {

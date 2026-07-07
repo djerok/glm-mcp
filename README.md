@@ -72,6 +72,15 @@ per-turn session context — that context is the floor on its token share.
 | `glm_recommend` | free (local) | GLM-vs-main-model advisory: which engine, which GLM model, confidence, and reasons. No GLM call. |
 | `glm_status` | free (local) | Peak window, active model, **usage-ledger totals** (proof of GLM spend), and config health. No GLM call. |
 
+**Live progress.** `glm_agent` / `glm_delegate` stream MCP **progress notifications** while they run —
+current iteration, token count, and **tok/s** — shown live in Claude Code and mapped to
+`tool.execution_progress` in VS Code Copilot. This heartbeat also keeps long calls alive on clients that
+reset their timeout on progress, and cancelling a run stops GLM **promptly** (partial changes are shown
+and revertable). `max_tokens` defaults to **`auto`** (uncapped/generous; the orchestrating agent may
+pass a number to cap a call). The server uses an **idle/stall timeout** (`GLM_STALL_TIMEOUT_MS`, 2 min),
+so an actively-streaming turn is never cut off. If a very long run is still cancelled by your client's
+tool-call timeout, raise it with `MCP_TOOL_TIMEOUT` / `CLAUDE_CODE_MCP_TOOL_IDLE_TIMEOUT`.
+
 ## Install
 
 ### (a) Claude Code
