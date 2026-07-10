@@ -19,6 +19,7 @@ and **Codex**. The same server powers every edition.
   <a href="https://www.npmjs.com/package/glm-mcp"><img src="https://img.shields.io/npm/v/glm-mcp?label=glm-mcp&color=cb3837&logo=npm" alt="glm-mcp"></a>
   <a href="https://www.npmjs.com/package/glm-mcp-claude"><img src="https://img.shields.io/npm/v/glm-mcp-claude?label=glm-mcp-claude&color=cb3837&logo=npm" alt="glm-mcp-claude"></a>
   <a href="https://www.npmjs.com/package/glm-mcp-copilot"><img src="https://img.shields.io/npm/v/glm-mcp-copilot?label=glm-mcp-copilot&color=cb3837&logo=npm" alt="glm-mcp-copilot"></a>
+  <a href="https://www.npmjs.com/package/glm-mcp-codex"><img src="https://img.shields.io/npm/v/glm-mcp-codex?label=glm-mcp-codex&color=cb3837&logo=npm" alt="glm-mcp-codex"></a>
   <a href="https://github.com/djerok/glm-mcp/actions/workflows/ci.yml"><img src="https://github.com/djerok/glm-mcp/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://glama.ai/mcp/servers/djerok/glm-mcp"><img src="https://glama.ai/mcp/servers/djerok/glm-mcp/badges/score.svg" alt="Glama"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT"></a>
@@ -110,7 +111,7 @@ Full details: [copilot/README.md](copilot/README.md).
 
 ### (c) Codex
 
-After the Codex package is published:
+Install the published Codex package:
 
 ```bash
 npx glm-mcp-codex --key YOUR_ZAI_KEY

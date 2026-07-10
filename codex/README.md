@@ -15,7 +15,7 @@ npm install
 node install-codex.mjs --key YOUR_ZAI_KEY
 ```
 
-After publishing, the equivalent is:
+From npm:
 
 ```powershell
 npm install -g glm-mcp-codex
