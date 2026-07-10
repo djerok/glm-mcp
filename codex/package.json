@@ -1,6 +1,6 @@
 {
   "name": "glm-mcp-codex",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "GLM (Zhipu/Z.ai) as a safe, cost-aware delegate for Codex: MCP tools, a custom glm agent, a delegation skill, and optional routing hooks.",
   "type": "module",
   "bin": {

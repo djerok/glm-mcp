@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Offline integration test for the Codex installer and its shared MCP launcher.
+// Integration test for the Codex installer and its shared MCP launcher.
 
 import assert from "node:assert/strict";
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -62,18 +62,25 @@ writeFileSync(config, `model = "test-model"\n${readFileSync(config, "utf8")}`, "
 run("install-codex.mjs");
 
 const installed = readFileSync(config, "utf8");
+const dataHome = join(codexHome, "glm-mcp");
+const stableLauncher = join(dataHome, "glm-server.mjs");
 assert.equal((installed.match(/# >>> glm-mcp-codex managed >>>/g) || []).length, 1, "installer must remain idempotent");
 assert.match(installed, /tool_timeout_sec = 1800/);
 assert.match(installed, /default_tools_approval_mode = "prompt"/);
 assert.doesNotMatch(installed, /test-key-not-real/, "credentials must not be stored in config.toml");
+assert.ok(installed.includes(`args = [${JSON.stringify(stableLauncher.replace(/\\/g, "/"))}]`), "MCP config must use the stable launcher outside the package or npx cache");
 const hookCommand = JSON.stringify(`node "${join(codexHome, "hooks", "glm_router_hook.mjs").replace(/\\/g, "/")}"`);
 assert.ok(installed.includes(`command = ${hookCommand}`), "hook command must retain shell quotes around its path");
-assert.match(readFileSync(join(codexHome, "glm-mcp", ".env"), "utf8"), /GLM_API_KEY=test-key-not-real/);
+assert.match(installed, /statusMessage = "Considering GLM delegation"/);
+assert.doesNotMatch(installed, /status_message/);
+assert.match(readFileSync(join(dataHome, ".env"), "utf8"), /GLM_API_KEY=test-key-not-real/);
+assert.ok(existsSync(stableLauncher));
+assert.ok(existsSync(join(dataHome, "node_modules", "glm-mcp", "src", "index.js")));
 assert.ok(existsSync(join(codexHome, "agents", "glm.toml")));
 assert.ok(existsSync(join(codexHome, "hooks", "glm_router_hook.mjs")));
 assert.ok(existsSync(join(userHome, ".agents", "skills", "glm-delegate", "SKILL.md")));
 
-const status = await callStatus(join(SELF, "glm-server.mjs"), join(codexHome, "glm-mcp"));
+const status = await callStatus(stableLauncher, dataHome);
 assert.equal(status.api_key_loaded, true, "launcher must load the private .env before starting glm-mcp");
 
 run("uninstall-codex.mjs");

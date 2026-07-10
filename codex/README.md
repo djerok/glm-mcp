@@ -25,7 +25,9 @@ glm-mcp-codex --key YOUR_ZAI_KEY
 The installer writes only its marker-delimited section in `~/.codex/config.toml`, stores credentials
 in `~/.codex/glm-mcp/.env`, adds `~/.codex/agents/glm.toml`, and adds the user skill at
 `~/.agents/skills/glm-delegate`. It configures a 30-minute tool timeout and prompts before mutating
-GLM tools. `glm_status` and `glm_recommend` are pre-approved because they are local read-only calls.
+GLM tools. It also pins the shared runtime under `~/.codex/glm-mcp`, so clearing an `npx` cache does
+not break the registered server. `glm_status` and `glm_recommend` are pre-approved because they are
+local read-only calls.
 
 Restart Codex, review the optional hook with `/hooks`, and run `glm_status`. The ChatGPT desktop app,
 Codex CLI, and IDE extension share the same MCP configuration.
