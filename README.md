@@ -1,16 +1,18 @@
 # glm-mcp — GLM as a cheap delegate for your AI coding agent
 
 **GLM** (Zhipu / Z.ai) as a **~10x cheaper** delegate for your AI coding agent. Your expensive
-main model — **Claude Opus**, or **Copilot's** default — orchestrates and reviews; **GLM** does
+main model — **Claude Opus**, **Copilot's** default, or **Codex** — orchestrates and reviews; **GLM** does
 the actual work, billed on cheap GLM tokens. GLM exposes an Anthropic-compatible `/v1/messages`
 endpoint, so it drops into anything that already speaks Anthropic. This repo wraps it as an
-**MCP server** with four tools, plus one-command installers for **Claude Code** and
-**GitHub Copilot**. The same server powers every edition.
+**MCP server** with four tools, plus one-command installers for **Claude Code**, **GitHub Copilot**,
+and **Codex**. The same server powers every edition.
 
 <p align="center">
   <a href="claude/"><img src="https://img.shields.io/badge/Claude_Code-glm--mcp--claude-d97757?style=for-the-badge&logo=anthropic&logoColor=white" alt="Claude Code edition"></a>
   &nbsp;
   <a href="copilot/"><img src="https://img.shields.io/badge/GitHub_Copilot-glm--mcp--copilot-24292e?style=for-the-badge&logo=githubcopilot&logoColor=white" alt="GitHub Copilot edition"></a>
+  &nbsp;
+  <a href="codex/"><img src="https://img.shields.io/badge/Codex-glm--mcp--codex-10a37f?style=for-the-badge&logo=openai&logoColor=white" alt="Codex edition"></a>
 </p>
 
 <p align="center">
@@ -27,7 +29,7 @@ endpoint, so it drops into anything that already speaks Anthropic. This repo wra
 ```mermaid
 flowchart TD
     You["You"]
-    Main["Main agent (Claude Opus / Copilot)<br/>orchestrates + reviews"]
+    Main["Main agent (Claude Opus / Copilot / Codex)<br/>orchestrates + reviews"]
     Srv["glm MCP server (stdio)<br/>4 tools"]
     Rt["Router<br/>peak-aware model pick + cost bias"]
     Zai[/"Z.ai Anthropic endpoint<br/>POST /v1/messages"/]
@@ -106,7 +108,20 @@ auto-routing hook**, and delegation **instructions files**. Reload the VS Code w
 Copilot Chat in Agent mode, start the `glm` server.
 Full details: [copilot/README.md](copilot/README.md).
 
-### (c) Any MCP client / Glama / Docker
+### (c) Codex
+
+After the Codex package is published:
+
+```bash
+npx glm-mcp-codex --key YOUR_ZAI_KEY
+```
+
+Installs a Codex MCP registration, a `glm` custom agent, the `glm-delegate` skill, and an advisory
+`UserPromptSubmit`/`PreToolUse` hook. The config gives GLM tools a 30-minute timeout and prompts before
+mutating calls. Restart Codex, review the hook with `/hooks`, and run `glm_status`.
+Full details: [codex/README.md](codex/README.md).
+
+### (d) Any MCP client / Glama / Docker
 
 The standalone [`glm-mcp`](https://www.npmjs.com/package/glm-mcp) package — no installer needed
 for Cursor, Windsurf, Claude Desktop, Glama, etc.:
@@ -135,28 +150,27 @@ actual GLM calls.
 
 ## Editions at a glance
 
-| | Claude Code -\> [`claude/`](claude/) | GitHub Copilot (VS Code) -\> [`copilot/`](copilot/) |
-|---|---|---|
-| npm package | `glm-mcp-claude` | `glm-mcp-copilot` |
-| Install | `npx glm-mcp-claude --key ...` | `npx glm-mcp-copilot --key ...` (+ `--global`) |
-| MCP server | user-scoped (`claude mcp add glm -s user`) | VS Code agent mode (`mcp.json`) |
-| Subagent | `glm` subagent (`~/.claude/agents/glm.md`) | `GLM` custom agent (`glm.agent.md`) |
-| Auto-routing hook | PreToolUse, `Task` matcher (`glm_subagent_router.mjs`) | PreToolUse, fires on all calls (`glm_router_hook.mjs`) |
-| Delegation policy | appended to `~/.claude/CLAUDE.md` | `.instructions.md` files |
+| | Claude Code -\> [`claude/`](claude/) | GitHub Copilot (VS Code) -\> [`copilot/`](copilot/) | Codex -\> [`codex/`](codex/) |
+|---|---|---|---|
+| npm package | `glm-mcp-claude` | `glm-mcp-copilot` | `glm-mcp-codex` |
+| Install | `npx glm-mcp-claude --key ...` | `npx glm-mcp-copilot --key ...` (+ `--global`) | `npx glm-mcp-codex --key ...` |
+| MCP server | user-scoped (`claude mcp add glm -s user`) | VS Code agent mode (`mcp.json`) | `~/.codex/config.toml` (or trusted project config) |
+| Subagent | `glm` subagent (`~/.claude/agents/glm.md`) | `GLM` custom agent (`glm.agent.md`) | `glm` custom agent (`~/.codex/agents/glm.toml`) |
+| Auto-routing hook | PreToolUse, `Task` matcher (`glm_subagent_router.mjs`) | PreToolUse, fires on all calls (`glm_router_hook.mjs`) | UserPromptSubmit + PreToolUse, advisory only |
+| Delegation policy | appended to `~/.claude/CLAUDE.md` | `.instructions.md` files | `glm-delegate` skill + optional `AGENTS.md` snippet |
 | Full-GLM launcher | `glm-code.mjs` (Claude only) | — |
-| Docs | [claude/README.md](claude/README.md) | [copilot/README.md](copilot/README.md) |
+| Docs | [claude/README.md](claude/README.md) | [copilot/README.md](copilot/README.md) | [codex/README.md](codex/README.md) |
 
-**Parity.** Both editions have the same four **tools**, a **subagent**, and a **PreToolUse
-hook**, running the same server underneath. VS Code **ignores hook matchers**, so the Copilot
-hook fires on every call and filters by `tool_name` internally; the Claude hook uses a `Task`
-matcher. Only Claude ships the standalone **`glm-code`** full-GLM launcher. Once a tool runs,
-behavior is identical across editions.
+**Parity.** All three editions expose the same four **tools** and a **subagent** while using the same
+server underneath. Codex uses its native custom-agent, skill, and hook surfaces; its hook is advisory
+only and must be trusted by the user. Only Claude ships the standalone **`glm-code`** full-GLM launcher.
 
 ## Configuration
 
 All knobs live in `.env` (git-ignored). Location per edition: **Claude**
-`~/.claude/glm-mcp/.env` (set during install); **Copilot** `~/.glm-mcp/glm-mcp/.env`. Full
-reference with comments: [`claude/glm-mcp/.env.example`](claude/glm-mcp/.env.example).
+`~/.claude/glm-mcp/.env` (set during install); **Copilot** `~/.glm-mcp/glm-mcp/.env`; **Codex**
+`~/.codex/glm-mcp/.env`. Codex sets `tool_timeout_sec = 1800` because its default MCP tool timeout is
+60 seconds. Full reference with comments: [`claude/glm-mcp/.env.example`](claude/glm-mcp/.env.example).
 
 | Var | Default | Meaning |
 |---|---|---|

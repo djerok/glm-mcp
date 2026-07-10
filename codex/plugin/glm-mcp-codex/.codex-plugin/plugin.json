@@ -1,0 +1,22 @@
+{
+  "name": "glm-mcp-codex",
+  "version": "1.2.0",
+  "description": "GLM delegation skill and advisory routing hook for Codex.",
+  "author": {
+    "name": "djerok"
+  },
+  "homepage": "https://github.com/djerok/glm-mcp/tree/main/codex#readme",
+  "repository": "https://github.com/djerok/glm-mcp",
+  "license": "MIT",
+  "keywords": ["codex", "mcp", "glm", "delegation"],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "GLM MCP for Codex",
+    "shortDescription": "Delegate safe, self-contained work to GLM.",
+    "longDescription": "A GLM delegation skill and an advisory routing hook. Install the glm-mcp-codex npm package for the MCP runtime and credentials.",
+    "developerName": "djerok",
+    "category": "Productivity",
+    "capabilities": ["Read", "Write"],
+    "defaultPrompt": "Use the GLM delegate for this well-specified, non-sensitive subtask."
+  }
+}

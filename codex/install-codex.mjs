@@ -1,0 +1,177 @@
+#!/usr/bin/env node
+// Install GLM MCP for Codex without copying the MCP core or storing keys in config.toml.
+// The generated block is marker-delimited, so reinstallation and removal are idempotent.
+
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  renameSync,
+  writeFileSync,
+} from "node:fs";
+import { homedir } from "node:os";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { createRequire } from "node:module";
+
+const SELF = dirname(fileURLToPath(import.meta.url));
+const require = createRequire(import.meta.url);
+const args = process.argv.slice(2);
+const option = (name) => {
+  const index = args.indexOf(name);
+  return index === -1 ? undefined : args[index + 1];
+};
+const flag = (name) => args.includes(name);
+
+if (flag("--help") || flag("-h")) {
+  console.log("Usage: glm-mcp-codex [--key KEY] [--project PATH] [--codex-home PATH] [--user-home PATH] [--no-hook]");
+  process.exit(0);
+}
+
+const USER_HOME = resolve(option("--user-home") || homedir());
+const GLOBAL_CODEX_HOME = resolve(option("--codex-home") || process.env.CODEX_HOME || join(USER_HOME, ".codex"));
+const PROJECT = option("--project") ? resolve(option("--project")) : null;
+const TARGET_CODEX_HOME = PROJECT ? join(PROJECT, ".codex") : GLOBAL_CODEX_HOME;
+const CONFIG = join(TARGET_CODEX_HOME, "config.toml");
+const DATA_HOME = resolve(option("--data-dir") || join(GLOBAL_CODEX_HOME, "glm-mcp"));
+const SKILL_ROOT = PROJECT ? join(PROJECT, ".agents", "skills") : join(USER_HOME, ".agents", "skills");
+const AGENT_DEST = join(TARGET_CODEX_HOME, "agents", "glm.toml");
+const HOOK_DEST = join(TARGET_CODEX_HOME, "hooks", "glm_router_hook.mjs");
+const SKILL_DEST = join(SKILL_ROOT, "glm-delegate");
+const KEY = option("--key") || process.env.GLM_API_KEY || "";
+const INSTALL_HOOK = !flag("--no-hook");
+
+const START = "# >>> glm-mcp-codex managed >>>";
+const END = "# <<< glm-mcp-codex managed <<<";
+const MANAGED = "# Managed by glm-mcp-codex";
+const normalize = (path) => path.replace(/\\/g, "/");
+const tomlString = (value) => JSON.stringify(normalize(value));
+
+function removeManagedBlock(text) {
+  const escapedStart = START.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const escapedEnd = END.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return text
+    .replace(new RegExp(`\\r?\\n?${escapedStart}[\\s\\S]*?${escapedEnd}\\r?\\n?`, "g"), "")
+    .replace(/\n{3,}/g, "\n\n");
+}
+
+function atomicWrite(path, content) {
+  mkdirSync(dirname(path), { recursive: true });
+  const temporary = `${path}.tmp-${process.pid}`;
+  writeFileSync(temporary, content, "utf8");
+  renameSync(temporary, path);
+}
+
+function backup(path) {
+  if (existsSync(path)) copyFileSync(path, `${path}.bak-${Date.now()}`);
+}
+
+function copyManaged(source, destination) {
+  if (existsSync(destination) && !readFileSync(destination, "utf8").includes(MANAGED)) {
+    console.log(`  left existing unmanaged file untouched: ${destination}`);
+    return false;
+  }
+  mkdirSync(dirname(destination), { recursive: true });
+  copyFileSync(source, destination);
+  return true;
+}
+
+function writeEnv() {
+  const envPath = join(DATA_HOME, ".env");
+  mkdirSync(DATA_HOME, { recursive: true });
+  if (!existsSync(envPath)) {
+    atomicWrite(envPath, "# GLM MCP credentials. This file is not read by Codex itself.\nGLM_API_KEY=\nGLM_BASE_URL=https://api.z.ai/api/anthropic\nGLM_MAX_CONCURRENT=1\n");
+  }
+  if (KEY) {
+    let env = readFileSync(envPath, "utf8");
+    env = /^GLM_API_KEY=/m.test(env)
+      ? env.replace(/^GLM_API_KEY=.*$/m, "GLM_API_KEY=" + KEY)
+      : "GLM_API_KEY=" + KEY + "\n" + env;
+    atomicWrite(envPath, env);
+    console.log("  stored GLM_API_KEY in the private glm-mcp .env file");
+  } else if (!/^GLM_API_KEY=\S+/m.test(readFileSync(envPath, "utf8"))) {
+    console.log(`  no API key set; add GLM_API_KEY to ${envPath} before delegation`);
+  }
+  return envPath;
+}
+
+let runtime;
+try {
+  runtime = require.resolve("glm-mcp/src/index.js");
+} catch {
+  console.error("glm-mcp runtime is missing. Run npm install in this package before installing Codex support.");
+  process.exit(1);
+}
+
+console.log("GLM MCP for Codex");
+console.log(`  scope  : ${PROJECT ? `project (${PROJECT})` : "user"}`);
+console.log(`  config : ${CONFIG}`);
+console.log(`  runtime: ${runtime}`);
+
+const envPath = writeEnv();
+copyManaged(join(SELF, "agents", "glm.toml"), AGENT_DEST);
+if (INSTALL_HOOK) copyManaged(join(SELF, "hooks", "glm_router_hook.mjs"), HOOK_DEST);
+
+if (existsSync(SKILL_DEST) && !existsSync(join(SKILL_DEST, ".glm-mcp-codex"))) {
+  console.log(`  left existing unmanaged skill untouched: ${SKILL_DEST}`);
+} else {
+  mkdirSync(SKILL_DEST, { recursive: true });
+  copyFileSync(join(SELF, "skills", "glm-delegate", "SKILL.md"), join(SKILL_DEST, "SKILL.md"));
+  atomicWrite(join(SKILL_DEST, ".glm-mcp-codex"), "glm-mcp-codex\n");
+}
+
+const launcher = join(SELF, "glm-server.mjs");
+const lines = [
+  START,
+  "# Generated by glm-mcp-codex. Credentials live in " + normalize(envPath) + ".",
+  "[mcp_servers.glm]",
+  "command = \"node\"",
+  "args = [" + tomlString(launcher) + "]",
+  "cwd = " + tomlString(DATA_HOME),
+  "env_vars = [\"GLM_API_KEY\", \"ANTHROPIC_AUTH_TOKEN\"]",
+  "startup_timeout_sec = 20",
+  "tool_timeout_sec = 1800",
+  "default_tools_approval_mode = \"prompt\"",
+  "required = false",
+  "",
+  "[mcp_servers.glm.tools.glm_status]",
+  "approval_mode = \"approve\"",
+  "",
+  "[mcp_servers.glm.tools.glm_recommend]",
+  "approval_mode = \"approve\"",
+];
+
+if (INSTALL_HOOK) {
+  const hookCommand = "node \"" + normalize(HOOK_DEST) + "\"";
+  lines.push(
+    "",
+    "[[hooks.UserPromptSubmit]]",
+    "[[hooks.UserPromptSubmit.hooks]]",
+    "type = \"command\"",
+    "command = " + tomlString(hookCommand),
+    "timeout = 5",
+    "status_message = \"Considering GLM delegation\"",
+    "",
+    "[[hooks.PreToolUse]]",
+    "matcher = \"^(Bash|apply_patch)$\"",
+    "[[hooks.PreToolUse.hooks]]",
+    "type = \"command\"",
+    "command = " + tomlString(hookCommand),
+    "timeout = 5",
+    "status_message = \"Considering GLM delegation\"",
+  );
+}
+lines.push(END, "");
+
+const previous = existsSync(CONFIG) ? readFileSync(CONFIG, "utf8") : "";
+if (existsSync(CONFIG)) backup(CONFIG);
+const prefix = removeManagedBlock(previous).trimEnd();
+atomicWrite(CONFIG, prefix + (prefix ? "\n\n" : "") + lines.join("\n"));
+
+console.log("\nInstalled:");
+console.log(`  MCP config  ${CONFIG}`);
+console.log(`  GLM agent   ${AGENT_DEST}`);
+console.log(`  GLM skill   ${SKILL_DEST}`);
+if (INSTALL_HOOK) console.log(`  router hook ${HOOK_DEST}`);
+console.log("\nNext: restart Codex, review the hook in /hooks, then run glm_status. The server prompts before any mutating GLM tool.");
