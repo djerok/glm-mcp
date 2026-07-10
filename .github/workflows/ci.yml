@@ -42,6 +42,31 @@ jobs:
       - name: Keyless MCP introspection smoke
         run: node scripts/smoke-stdio.mjs
 
+  codex:
+    name: Codex installer + hooks + plugin
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - name: Install Codex package dependencies
+        working-directory: codex
+        run: npm ci --no-audit --no-fund
+
+      - name: Test Codex installer, hooks, and plugin bundle
+        working-directory: codex
+        run: npm test
+
+      - name: Smoke-test the Codex MCP launcher
+        run: node scripts/smoke-stdio.mjs codex/glm-server.mjs
+
+      - name: Verify Codex package contents
+        working-directory: codex
+        run: npm pack --dry-run
+
   docker:
     name: Docker MCP introspection
     runs-on: ubuntu-latest

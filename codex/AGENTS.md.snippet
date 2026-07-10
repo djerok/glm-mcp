@@ -1,0 +1,8 @@
+# GLM delegation
+
+Use the `glm` MCP server for well-specified, self-contained, non-sensitive work when cost matters.
+
+- Use `mcp__glm__glm_agent` for repository changes, passing an absolute `workdir`; use `dry_run: true` when review is appropriate.
+- Use `mcp__glm__glm_delegate` for text-only subtasks and include all required context.
+- Use `mcp__glm__glm_recommend` when uncertain.
+- Keep credentials, proprietary/security-sensitive data, screenshots, architecture, highly parallel work, very large context, and long dependent tool loops in Codex.

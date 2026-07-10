@@ -1,0 +1,55 @@
+{
+  "name": "glm-mcp-codex",
+  "version": "1.2.1",
+  "description": "GLM (Zhipu/Z.ai) as a safe, cost-aware delegate for Codex: MCP tools, a custom glm agent, a delegation skill, and optional routing hooks.",
+  "type": "module",
+  "bin": {
+    "glm-mcp-codex": "install-codex.mjs"
+  },
+  "scripts": {
+    "install-codex": "node install-codex.mjs",
+    "uninstall-codex": "node uninstall-codex.mjs",
+    "test": "node test-install.mjs && node test-hooks.mjs && node test-plugin.mjs"
+  },
+  "dependencies": {
+    "glm-mcp": "1.2.0"
+  },
+  "files": [
+    "agents/",
+    "hooks/",
+    "skills/",
+    "plugin/",
+    "install-codex.mjs",
+    "uninstall-codex.mjs",
+    "glm-server.mjs",
+    "config.toml.example",
+    "AGENTS.md.snippet",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "codex",
+    "mcp",
+    "model-context-protocol",
+    "glm",
+    "zhipu",
+    "z.ai",
+    "subagent",
+    "agent-skill",
+    "cost-optimization"
+  ],
+  "author": "djerok",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/djerok/glm-mcp.git",
+    "directory": "codex"
+  },
+  "bugs": {
+    "url": "https://github.com/djerok/glm-mcp/issues"
+  },
+  "homepage": "https://github.com/djerok/glm-mcp/tree/main/codex#readme"
+}
