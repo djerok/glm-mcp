@@ -10,7 +10,7 @@ than the default Copilot model — offload work to it to save cost.
 - For **any** implementation / codegen / edit / refactor / test / docs task, call **`glm_agent`**
   with the goal + the absolute repo path (`workdir`). GLM reads, writes, edits, and runs the files
   itself, end-to-end, on **GLM tokens**. Prefer this over doing the file work yourself.
-- For pure text drafts (no file ops), use **`glm_delegate`**.
+- Text-only subtasks also go through **`glm_agent`** (`glm_delegate` is opt-in via GLM_DELEGATE=on).
 - **To actually spend GLM tokens (not Copilot's), you must call the glm tools — don't do the work
   inline yourself.** Doing it yourself spends the default model's tokens, not GLM's.
 - Keep on the **default model** for: sensitive/secret code, vision/images, parallel work, very large

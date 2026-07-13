@@ -47,7 +47,7 @@ configuration.
 - Ask Codex to use the **glm** agent for an explicit, self-contained subtask.
 - Call `mcp__glm__glm_agent` for coding work. Always pass an absolute `workdir`; use `dry_run: true`
   when reviewing a proposed change first.
-- Call `mcp__glm__glm_delegate` for text-only work.
+- Text-only work also goes through `mcp__glm__glm_agent` (`mcp__glm__glm_delegate` is opt-in: start the server with `GLM_DELEGATE=on`).
 - Call `mcp__glm__glm_recommend` when unsure; it does not call the GLM API.
 
 Keep secrets, proprietary or security-sensitive material, images, architecture, highly parallel work,

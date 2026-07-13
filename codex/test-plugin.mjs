@@ -12,7 +12,8 @@ const manifestPath = join(ROOT, ".codex-plugin", "plugin.json");
 const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
 
 assert.equal(manifest.name, "glm-mcp-codex");
-assert.equal(manifest.version, "1.2.1");
+const pkgVersion = JSON.parse(readFileSync(join(SELF, "package.json"), "utf8")).version;
+assert.equal(manifest.version, pkgVersion, "plugin manifest version must match codex/package.json");
 assert.equal(manifest.skills, "./skills/");
 assert.equal(typeof manifest.description, "string");
 assert.ok(manifest.description.length > 20);

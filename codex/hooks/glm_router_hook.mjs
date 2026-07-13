@@ -34,7 +34,7 @@ if (event.hook_event_name === "UserPromptSubmit") {
   if (keepOnCodex) {
     emit("UserPromptSubmit", "GLM routing: keep this task in Codex. Do not send sensitive, visual, architecture-heavy, parallel, huge-context, or long dependent-loop work to GLM.");
   } else if (glmFit) {
-    emit("UserPromptSubmit", "GLM routing: this appears well-specified and suitable for delegation. For repo work, consider mcp__glm__glm_agent with the absolute workdir (use dry_run:true for review); for text-only work, use mcp__glm__glm_delegate. If uncertain, call the free mcp__glm__glm_recommend tool. Never delegate secrets or sensitive data.");
+    emit("UserPromptSubmit", "GLM routing: this appears well-specified and suitable for delegation. For repo work, consider mcp__glm__glm_agent with the absolute workdir (use dry_run:true for review); text-only work also goes through mcp__glm__glm_agent. If uncertain, call the free mcp__glm__glm_recommend tool. Never delegate secrets or sensitive data.");
   }
   process.exit(0);
 }

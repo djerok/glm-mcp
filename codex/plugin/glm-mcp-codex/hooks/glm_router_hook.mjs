@@ -14,7 +14,7 @@ try {
     process.stdout.write(JSON.stringify({
       hookSpecificOutput: {
         hookEventName: "UserPromptSubmit",
-        additionalContext: "GLM routing: this may be suitable for the glm MCP delegate. Use glm_agent for repository work or glm_delegate for text only; never delegate secrets or sensitive material.",
+        additionalContext: "GLM routing: this may be suitable for the glm MCP delegate. Use glm_agent for repository work and for text-only subtasks; never delegate secrets or sensitive material.",
       },
     }));
   }

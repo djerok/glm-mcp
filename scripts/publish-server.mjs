@@ -19,7 +19,7 @@ import { spawnSync } from "node:child_process";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, "..");
 const SERVER_DIR = join(REPO_ROOT, "claude", "glm-mcp");
-const PUBLISH_VERSION = "1.2.0"; // standalone glm-mcp npm version (claude/ package.json stays untouched)
+const PUBLISH_VERSION = "1.3.0"; // standalone glm-mcp npm version (claude/ package.json stays untouched)
 
 // ---------------------------------------------------------------------------
 // Sanity: the source server must exist where we expect it.

@@ -7,7 +7,7 @@ description: Delegate well-specified, non-sensitive coding, testing, documentati
 
 1. Check the task is safe to send to GLM. Keep credentials, proprietary or security-sensitive material, screenshots, architecture decisions, highly parallel work, very large context, and long debugging loops in Codex.
 2. For repo work, call `mcp__glm__glm_agent` with an explicit task and absolute `workdir`. Use `dry_run: true` first when a patch needs review.
-3. For text-only work, call `mcp__glm__glm_delegate` and include all required context in the request.
+3. Text-only work also goes through `mcp__glm__glm_agent` (give it a task with no file edits). (`mcp__glm__glm_delegate` exists only when the server is started with GLM_DELEGATE=on.)
 4. If fit is unclear, call the free local `mcp__glm__glm_recommend` tool before delegating.
 5. Report GLM's summary, changed files, and token/cost statistics. Verify important changes with the repository's normal tests.
 

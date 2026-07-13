@@ -16,7 +16,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const SELF = dirname(fileURLToPath(import.meta.url));
-const RUNTIME_VERSION = "1.2.0";
+const RUNTIME_VERSION = "1.3.0";
 const args = process.argv.slice(2);
 const option = (name) => {
   const index = args.indexOf(name);

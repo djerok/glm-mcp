@@ -49,6 +49,10 @@ const TASK_TYPES = [
   "agentic_loop", "toolcall_heavy",
 ];
 
+// glm_delegate (text-only) is OPT-IN: default OFF so orchestrators always use glm_agent
+// (which also handles text-only tasks). Set GLM_DELEGATE=on/true/yes/1 to expose it.
+const DELEGATE_ENABLED = /^(1|on|true|yes)$/i.test(process.env.GLM_DELEGATE || "off");
+
 // Build a progress emitter bound to this tool call. If the MCP client supplied a
 // progressToken, stream live status (iteration, token count, tok/s) via
 // notifications/progress -- rendered by Claude Code and VS Code Copilot, and it also
@@ -63,6 +67,7 @@ function makeProgress(extra) {
 }
 
 // ----------------------------- glm_delegate -----------------------------
+if (DELEGATE_ENABLED) {
 server.registerTool(
   "glm_delegate",
   {
@@ -149,6 +154,7 @@ server.registerTool(
     }
   }
 );
+}
 
 // ----------------------------- glm_agent -----------------------------
 server.registerTool(
@@ -158,7 +164,7 @@ server.registerTool(
     description:
       "Run GLM as a real coding agent with its OWN file tools (read/write/edit/list/bash); it works " +
       "your repo end-to-end on GLM tokens (~10x cheaper than Opus). Prefer this over doing repo work " +
-      "yourself. Pass task + absolute workdir. Returns a concise summary+stats (use dry_run to preview " +
+      "yourself; it also handles text-only subtasks (give it a task with no file edits). Pass task + absolute workdir. Returns a concise summary+stats (use dry_run to preview " +
       "a diff first). Not for sensitive, huge-context, or heavy dependent-tool-loop work.",
     inputSchema: {
       task: z.string().min(1).describe("The coding task for GLM to carry out end-to-end in the repo."),
@@ -305,6 +311,7 @@ server.registerTool(
       max_concurrent: config.MAX_CONCURRENT,
       glm_usage_ledger: usageSummary(),
       use_haiku_subagent: USE_HAIKU,
+      delegate_tool: DELEGATE_ENABLED ? "on (GLM_DELEGATE=on)" : "off (default; glm_agent covers text-only tasks too — set GLM_DELEGATE=on to expose glm_delegate)",
       orchestration: USE_HAIKU
         ? "Haiku `glm` subagent allowed (spends some Claude tokens to orchestrate)."
         : "Direct GLM only (GLM_USE_HAIKU=off) -> call glm_agent directly; keeps all tokens on GLM.",

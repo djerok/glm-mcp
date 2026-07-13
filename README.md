@@ -71,11 +71,11 @@ per-turn session context — that context is the floor on its token share.
 | Tool | Cost | What it does |
 |---|---|---|
 | `glm_agent` | GLM tokens | GLM as a real coding agent in your repo (read/write/edit/run). `dry_run: true` previews a diff and writes nothing; after a real run a **git-checkpoint revert line** is printed. |
-| `glm_delegate` | GLM tokens | Pure text generation — text in, text out. GLM has no file access; put everything in `task` + `context`. |
+| `glm_delegate` | GLM tokens (opt-in) | Pure text generation — text in, text out. **Hidden by default** (`glm_agent` handles text-only tasks too); set `GLM_DELEGATE=on` to expose it. |
 | `glm_recommend` | free (local) | GLM-vs-main-model advisory: which engine, which GLM model, confidence, and reasons. No GLM call. |
 | `glm_status` | free (local) | Peak window, active model, **usage-ledger totals** (proof of GLM spend), and config health. No GLM call. |
 
-**Live progress.** `glm_agent` / `glm_delegate` stream MCP **progress notifications** while they run —
+**Live progress.** `glm_agent` streams MCP **progress notifications** while it runs —
 current iteration, token count, and **tok/s** — shown live in Claude Code and mapped to
 `tool.execution_progress` in VS Code Copilot. This heartbeat also keeps long calls alive on clients that
 reset their timeout on progress, and cancelling a run stops GLM **promptly** (partial changes are shown

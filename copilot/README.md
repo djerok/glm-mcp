@@ -9,7 +9,7 @@ calls `glm_agent` / `glm_delegate` / `glm_recommend` / `glm_status` to offload w
 ## What you get
 - The **glm MCP server** registered in VS Code (agent mode) — tools:
   - **`glm_agent`** — GLM works your repo directly (read/write/edit/run), returns a concise summary + stats.
-  - **`glm_delegate`** — GLM drafts text you place.
+  - **`glm_delegate`** — GLM drafts text you place. **Opt-in** (hidden by default; `glm_agent` handles text-only tasks too) — set `GLM_DELEGATE=on` to expose it.
   - **`glm_recommend`** — free advisory: GLM vs the default model.
   - **`glm_status`** — usage ledger (proof of GLM tokens spent) + config.
 - A **`GLM` custom agent (subagent)** — restricted to the `glm` tools, so it *must* delegate to GLM
@@ -80,6 +80,33 @@ Small differences that remain:
 
 Everything else — the GLM agent loop, peak-aware model pick, cost bias, token cap, usage ledger,
 `dry_run` oversight — is the **same server**, so it behaves identically once a tool is called.
+
+## Example: the GLM agent in VS Code
+
+Pick the **GLM** agent from the chat mode dropdown (or let the main agent hand off to it) and give it a
+self-contained task. Because the agent is restricted to the `glm` tools, it can't edit or run anything
+itself — it reads to understand, then routes the work to GLM. The activity feed looks like this:
+
+```
+GLM: Add model routing instructions
+  Work in the repository at C:\Users\ericc\Desktop\robotr. Implement the request by adding…
+  🔍 Searched for files matching **/*.md — 50 matches          ← read-only recon to specify the task
+  📖 Read CLAUDE.md
+  🔍 Searched for files matching .gitignore — 1 match
+  ⚙  glm_agent(task="Add model routing instructions…", workdir="C:\Users\ericc\Desktop\robotr")
+       iter 1/30 · 0 tok · 0 tok/s
+       iter 1/30 · 640 tok · 42 tok/s
+       iter 2/30 · write docs/routing.md
+       iter 2/30 · 1,240 tok · 38 tok/s          ← live progress: iteration · tokens · tok/s · action
+  === GLM STATS ===
+  model: glm-5.2 | 3,180 tokens delegated to GLM | est. $0.006 (~10x cheaper)
+```
+
+The read/search steps are expected and cheap — they're how the agent builds a precise `task`; only
+`glm_agent` (billed to GLM) does the writing. If you'd rather skip the recon on a task you've already
+specified, tell it: *"call glm_agent directly with workdir … — no repo scanning first."*
+`glm_delegate` does **not** appear here by default: `glm_agent` also handles text-only subtasks, so the
+orchestrator can't mis-route to the text-only tool (expose it with `GLM_DELEGATE=on` if you want it).
 
 ## Configuration
 Same `.env` knobs as the Claude version, in `~/.glm-mcp/glm-mcp/.env`:
